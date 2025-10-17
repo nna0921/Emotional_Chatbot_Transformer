@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from collections import Counter
 import numpy as np
+import gdown
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -323,19 +324,21 @@ def beam_search(model, src, beam_size=4, max_len=50, length_penalty=0.7, no_repe
 
 
 @st.cache_resource
-def load_model():
-    vocab_size = len(final_vocab)
+def load_model(): 
+    vocab_size = len(final_vocab) 
     model = TransformerModel(vocab_size=vocab_size).to(device)
-    model_path = "/Users/mac/Desktop/gen_ai_22F3658_3684/best_transformer_chatbot (1).pt"
-    if os.path.exists(model_path):
-        state_dict = torch.load(model_path, map_location=device)
-        model.load_state_dict(state_dict)
-        st.success("Model loaded successfully!")
-        return model
-    else:
-        st.error(f"Model file {model_path} not found. Place it in the project folder.")
-        return None
-
+    
+    model_path = "best_transformer_chatbot (1).pt" 
+    if not os.path.exists(model_path):
+        url = "https://drive.google.com/uc?export=download&id=1gw01BplUZ8oIb06dcY1czXeW_Oz-DKAr"
+        gdown.download(url, model_path, quiet=False)  
+        st.success("Model downloaded successfully from Google Drive!")
+    
+    # Load the state dict
+    state_dict = torch.load(model_path, map_location=device)
+    model.load_state_dict(state_dict)
+    model.eval()  # Set to evaluation mode if needed
+    return model
 model = load_model()
 
 

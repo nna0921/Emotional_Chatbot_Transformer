@@ -20,7 +20,7 @@ libtorch.dylib
 
 best_transformer_chatbot (1).pt
 *.pt
-*.csv  # If your emotion-emotion_69k.csv is large
+*.csv  
 
 .streamlit/
 .vscode/
