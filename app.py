@@ -15,89 +15,104 @@ import gdown
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-df = pd.read_csv("emotion-emotion_69k.csv")
-df = df.dropna(axis=1, how='all')
+@st.cache_data(show_spinner="Downloading and processing CSV data...")
+def load_and_process_csv():
+    csv_path = "emotion-emotion_69k.csv"
+    if not os.path.exists(csv_path):
+        url = "https://drive.google.com/uc?export=download&id=1fXPFfUF22Wn7Qn8wu7-jm_biNzZUV8L4"
+        gdown.download(url, csv_path, quiet=False)
+        st.success("CSV downloaded successfully from Google Drive!")
 
-def normalize_text(text):
-    text = str(text).lower().strip()
-    text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[“”\"']", '"', text)
-    text = re.sub(r"([?.!,])", r" \1 ", text)
-    text = re.sub(r"[^a-zA-Z?.!,\"]+", " ", text)
-    return text.strip()
+    df = pd.read_csv(csv_path)
+    df = df.dropna(axis=1, how='all')
 
-inputs = []
-targets = []
+    def normalize_text(text):
+        text = str(text).lower().strip()
+        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"[“”\"']", '"', text)
+        text = re.sub(r"([?.!,])", r" \1 ", text)
+        text = re.sub(r"[^a-zA-Z?.!,\"]+", " ", text)
+        return text.strip()
 
-for _, row in df.iterrows():
-    situation = normalize_text(row.get("Situation", ""))
-    emotion = normalize_text(row.get("emotion", ""))
-    cust = re.sub(r"customer\s*:", "", str(row.get("empathetic_dialogues", "")), flags=re.IGNORECASE)
-    cust = re.sub(r"agent\s*:", "", cust, flags=re.IGNORECASE)
-    cust = cust.replace("\\n", " ").strip()
-    cust = normalize_text(cust)
-    target = normalize_text(str(row.get("labels", "")))
+    inputs = []
+    targets = []
 
-    if not situation or not emotion or not cust or not target:
-        continue
+    for _, row in df.iterrows():
+        situation = normalize_text(row.get("Situation", ""))
+        emotion = normalize_text(row.get("emotion", ""))
+        cust = re.sub(r"customer\s*:", "", str(row.get("empathetic_dialogues", "")), flags=re.IGNORECASE)
+        cust = re.sub(r"agent\s*:", "", cust, flags=re.IGNORECASE)
+        cust = cust.replace("\\n", " ").strip()
+        cust = normalize_text(cust)
+        target = normalize_text(str(row.get("labels", "")))
 
-    x = f"Emotion: {emotion} | Situation: {situation} | Customer: {cust} Agent:"
-    y = target
+        if not situation or not emotion or not cust or not target:
+            continue
 
-    inputs.append(x)
-    targets.append(y)
+        x = f"Emotion: {emotion} | Situation: {situation} | Customer: {cust} Agent:"
+        y = target
 
-data = pd.DataFrame({"input": inputs, "target": targets})
+        inputs.append(x)
+        targets.append(y)
 
-train_df, temp_df = train_test_split(data, test_size=0.2, random_state=42)
-val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42)
+    data = pd.DataFrame({"input": inputs, "target": targets})
 
+    train_df, temp_df = train_test_split(data, test_size=0.2, random_state=42)
+    val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42)
 
-structural_tokens = ["Emotion:", "|", "Situation:", "Customer:", "Agent:"]
+    structural_tokens = ["Emotion:", "|", "Situation:", "Customer:", "Agent:"]
 
-def tokenize(text, structural_tokens=structural_tokens):
-    if not isinstance(text, str):
-        return []
-    text = text.lower()
-    pattern_parts = [re.escape(tok.lower()) for tok in structural_tokens]
-    full_pattern = "|".join(pattern_parts) + r"|\w+|[^\w\s]"
-    return re.findall(full_pattern, text)
+    def tokenize(text, structural_tokens=structural_tokens):
+        if not isinstance(text, str):
+            return []
+        text = text.lower()
+        pattern_parts = [re.escape(tok.lower()) for tok in structural_tokens]
+        full_pattern = "|".join(pattern_parts) + r"|\w+|[^\w\s]"
+        return re.findall(full_pattern, text)
 
-train_inputs = [tokenize(text) for text in train_df["input"]]
-train_targets = [tokenize(text) for text in train_df["target"]]
-all_train_tokens = [tok for seq in (train_inputs + train_targets) for tok in seq]
+    train_inputs = [tokenize(text) for text in train_df["input"]]
+    train_targets = [tokenize(text) for text in train_df["target"]]
+    all_train_tokens = [tok for seq in (train_inputs + train_targets) for tok in seq]
 
-min_freq = 2
-token_counts = Counter(all_train_tokens)
-CORE_VOCAB_FILTERED = [
-    tok for tok, freq in token_counts.items() 
-    if freq >= min_freq and tok not in [t.lower() for t in structural_tokens]
-]
+    min_freq = 2
+    token_counts = Counter(all_train_tokens)
+    CORE_VOCAB_FILTERED = [
+        tok for tok, freq in token_counts.items() 
+        if freq >= min_freq and tok not in [t.lower() for t in structural_tokens]
+    ]
 
-special_tokens = ["<pad>", "<bos>", "<eos>", "<unk>", "<sep>"]
+    special_tokens = ["<pad>", "<bos>", "<eos>", "<unk>", "<sep>"]
 
-raw_emotions = (
-    train_df["input"]
-    .str.extract(r"emotion:\s*(\w+)", flags=re.IGNORECASE)[0]
-    .dropna()
-    .unique()
-    .tolist()
-)
-valid_emotions = [
-    e for e in raw_emotions
-    if isinstance(e, str) and e.isalpha() and e.lower() not in ["nan", "but", "we", "time", "i", "m", "a", "t"]
-]
-emotion_tokens = [f"<emotion_{e.lower()}>" for e in valid_emotions]
+    raw_emotions = (
+        train_df["input"]
+        .str.extract(r"emotion:\s*(\w+)", flags=re.IGNORECASE)[0]
+        .dropna()
+        .unique()
+        .tolist()
+    )
+    valid_emotions = [
+        e for e in raw_emotions
+        if isinstance(e, str) and e.isalpha() and e.lower() not in ["nan", "but", "we", "time", "i", "m", "a", "t"]
+    ]
+    emotion_tokens = [f"<emotion_{e.lower()}>" for e in valid_emotions]
 
-final_vocab = special_tokens + emotion_tokens + structural_tokens + CORE_VOCAB_FILTERED
-word2idx = {word: idx for idx, word in enumerate(final_vocab)}
-idx2word = {idx: word for word, idx in word2idx.items()}
+    final_vocab = special_tokens + emotion_tokens + structural_tokens + CORE_VOCAB_FILTERED
+    word2idx = {word: idx for idx, word in enumerate(final_vocab)}
+    idx2word = {idx: word for word, idx in word2idx.items()}
 
-PAD_IDX = word2idx["<pad>"]
-SOS_IDX = word2idx["<bos>"]
-EOS_IDX = word2idx["<eos>"]
-UNK_IDX = word2idx["<unk>"]
+    PAD_IDX = word2idx["<pad>"]
+    SOS_IDX = word2idx["<bos>"]
+    EOS_IDX = word2idx["<eos>"]
+    UNK_IDX = word2idx["<unk>"]
 
+    return (
+        final_vocab, word2idx, idx2word, valid_emotions,
+        PAD_IDX, SOS_IDX, EOS_IDX, UNK_IDX,
+        normalize_text, tokenize  # Return functions if needed globally
+    )
+
+# Load everything from the cached function
+final_vocab, word2idx, idx2word, valid_emotions, PAD_IDX, SOS_IDX, EOS_IDX, UNK_IDX, normalize_text, tokenize = load_and_process_csv()
 def detokenize(tokens):
     if isinstance(tokens, str):
         tokens = tokens.split()
