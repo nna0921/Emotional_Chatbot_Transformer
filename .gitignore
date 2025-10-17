@@ -1,28 +1,27 @@
 chatbot_env/
-
 venv/
 env/
 .venv/
-ENV/
-env*/
-venv*/
 
 __pycache__/
-*.py[cod]
 *.pyc
 *.pyo
 *.pyd
-*.egg
-*.egg-info/
 build/
 dist/
+*.egg-info/
 *.dist-info/
 
-chatbot_env/lib/python3.10/site-packages/
+torch/
+libtorch_cpu.dylib
+libtorch.dylib
+*.dylib
+*.so
+
+best_transformer_chatbot (1).pt
+*.pt
+*.csv  # If your emotion-emotion_69k.csv is large
 
 .streamlit/
-secrets.toml
 .vscode/
-.idea/
-*.code-workspace
-.ipynb_checkpoints/
+.DS_Store
