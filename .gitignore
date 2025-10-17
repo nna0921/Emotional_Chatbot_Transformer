@@ -1,11 +1,11 @@
 chatbot_env/
+
 venv/
 env/
 .venv/
 ENV/
 env*/
 venv*/
-*.env  
 
 __pycache__/
 *.py[cod]
@@ -16,10 +16,13 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+*.dist-info/
 
-.vscode/
-*.code-workspace
+chatbot_env/lib/python3.10/site-packages/
 
 .streamlit/
-streamlit_config.toml
 secrets.toml
+.vscode/
+.idea/
+*.code-workspace
+.ipynb_checkpoints/
