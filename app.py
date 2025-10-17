@@ -125,7 +125,6 @@ def detokenize(tokens):
         tokens = tokens.split()
 
     text = " ".join(tokens)
-
     text = (text
             .replace("’", "'")
             .replace("‘", "'")
@@ -134,23 +133,26 @@ def detokenize(tokens):
 
     text = re.sub(r'(?<=\b\w)"(?=\w)', "'", text)   
     text = re.sub(r'(?<=\w)"(?=\w)', "'", text)    
-
     text = re.sub(r"\s+([?.!,])", r"\1", text)
-
     text = re.sub(r"\s+'", "'", text)
     text = re.sub(r"'\s+", "'", text)
     text = re.sub(r'\s+"', '"', text)
     text = re.sub(r'"\s+', '"', text)
-
     text = re.sub(r'([A-Za-z])"([A-Za-z])', r"\1'\2", text)
-
     text = re.sub(r"([!?.,])\1{2,}", r"\1", text)
-
     text = re.sub(r"\s+", " ", text).strip()
     if text:
         text = text[0].upper() + text[1:]
 
     return text
+
+
+def encode(tokens, max_len=64):
+    ids = [word2idx.get(t, UNK_IDX) for t in tokens]
+    ids = [SOS_IDX] + ids + [EOS_IDX]
+    if len(ids) < max_len:
+        ids += [PAD_IDX] * (max_len - len(ids))
+    return torch.tensor(ids[:max_len])
 
 
 class PositionalEncoding(nn.Module):
