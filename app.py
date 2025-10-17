@@ -39,7 +39,7 @@ def load_and_process_csv():
     if not os.path.exists(csv_path):
         url = "https://drive.google.com/uc?export=download&id=1fXPFfUF22Wn7Qn8wu7-jm_biNzZUV8L4"
         gdown.download(url, csv_path, quiet=False)
-        st.success("CSV downloaded successfully from Google Drive!")
+        # st.success("CSV downloaded successfully from Google Drive!")
 
     df = pd.read_csv(csv_path)
     df = df.dropna(axis=1, how='all')
@@ -359,7 +359,7 @@ def load_model():
     if not os.path.exists(model_path):
         url = "https://drive.google.com/uc?export=download&id=1gw01BplUZ8oIb06dcY1czXeW_Oz-DKAr"
         gdown.download(url, model_path, quiet=False)  
-        st.success("Model downloaded successfully from Google Drive!")
+        # st.success("Model downloaded successfully from Google Drive!")
     
     # Load the state dict
     state_dict = torch.load(model_path, map_location=device)
