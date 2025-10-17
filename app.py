@@ -114,34 +114,43 @@ def load_and_process_csv():
 
 
 final_vocab, word2idx, idx2word, valid_emotions, PAD_IDX, SOS_IDX, EOS_IDX, UNK_IDX = load_and_process_csv()
+import re
+
 def detokenize(tokens):
+    """
+    Converts token list to clean, human-readable text.
+    Fixes spacing, punctuation, and quote/apostrophe inconsistencies.
+    """
     if isinstance(tokens, str):
         tokens = tokens.split()
+
     text = " ".join(tokens)
+
     text = (text
             .replace("’", "'")
             .replace("‘", "'")
             .replace("“", '"')
             .replace("”", '"'))
+
+    text = re.sub(r'(?<=\b\w)"(?=\w)', "'", text)   
+    text = re.sub(r'(?<=\w)"(?=\w)', "'", text)    
+
     text = re.sub(r"\s+([?.!,])", r"\1", text)
-    text = re.sub(r'(?<=\w)"(?=\w)', "'", text)
+
     text = re.sub(r"\s+'", "'", text)
     text = re.sub(r"'\s+", "'", text)
     text = re.sub(r'\s+"', '"', text)
     text = re.sub(r'"\s+', '"', text)
-    text = re.sub(r'(?<=\b\w)"(?=\w\b)', "'", text)
+
+    text = re.sub(r'([A-Za-z])"([A-Za-z])', r"\1'\2", text)
+
     text = re.sub(r"([!?.,])\1{2,}", r"\1", text)
+
     text = re.sub(r"\s+", " ", text).strip()
     if text:
         text = text[0].upper() + text[1:]
-    return text
 
-def encode(tokens, max_len=64):
-    ids = [word2idx.get(t, UNK_IDX) for t in tokens]
-    ids = [SOS_IDX] + ids + [EOS_IDX]
-    if len(ids) < max_len:
-        ids += [PAD_IDX] * (max_len - len(ids))
-    return torch.tensor(ids[:max_len])
+    return text
 
 
 class PositionalEncoding(nn.Module):
